@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎰 カジノ スロット</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a1a;
+    color: #fff;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px 32px;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    font-size: clamp(1.4rem, 6vw, 2rem);
+    text-align: center;
+    margin-bottom: 4px;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 0 8px #ffd70088);
+  }
+
+  /* ステータスバー */
+  .status {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 10px 0;
+    font-size: clamp(0.85rem, 3.5vw, 1rem);
+  }
+  .status-item {
+    background: #1a1a3a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 6px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+  }
+  .status-label { font-size: 0.72em; color: #888; }
+  .status-value { font-weight: bold; color: #ffd700; }
+  .status-value.positive { color: #4cff8f; }
+  .status-value.negative { color: #ff5555; }
+
+  /* スロットマシン筐体 */
+  .machine {
+    background: linear-gradient(180deg, #1e1e3e 0%, #12122a 100%);
+    border: 2px solid #444;
+    border-radius: 20px;
+    padding: 16px;
+    width: 100%;
+    max-width: 400px;
+    margin: 10px 0;
+    box-shadow: 0 0 30px #0008, inset 0 1px 0 #ffffff22;
+  }
+
+  /* リール */
+  .reels {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .reel-wrap {
+    background: #000;
+    border: 2px solid #555;
+    border-radius: 12px;
+    width: calc(33.3% - 8px);
+    max-width: 110px;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 8px #000a;
+  }
+
+  .reel-symbol {
+    font-size: clamp(2.4rem, 12vw, 3.2rem);
+    line-height: 1;
+    transition: none;
+    filter: drop-shadow(0 0 6px #fff4);
+  }
+
+  .reel-wrap.spinning .reel-symbol {
+    animation: spin-blur 0.08s linear infinite;
+  }
+
+  @keyframes spin-blur {
+    0%   { transform: translateY(-20%) scale(1.05); opacity: 0.7; }
+    50%  { transform: translateY(0)    scale(1);    opacity: 1;   }
+    100% { transform: translateY(20%)  scale(1.05); opacity: 0.7; }
+  }
+
+  /* 当たりライン */
+  .win-line {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #ffd700, transparent);
+    border-radius: 2px;
+    margin-bottom: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .win-line.active { opacity: 1; animation: glow-line 0.6s ease-in-out infinite alternate; }
+  @keyframes glow-line {
+    from { box-shadow: 0 0 4px #ffd700; }
+    to   { box-shadow: 0 0 16px #ffd700, 0 0 30px #ffa50088; }
+  }
+
+  /* メッセージ */
+  .message {
+    text-align: center;
+    font-size: clamp(0.9rem, 4vw, 1.1rem);
+    min-height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    transition: color 0.3s;
+  }
+  .message.win  { color: #4cff8f; }
+  .message.big-win { color: #ffd700; animation: pulse 0.4s ease-in-out infinite alternate; }
+  .message.lose { color: #ff7070; }
+  .message.neutral { color: #aaa; }
+
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to   { transform: scale(1.05); text-shadow: 0 0 16px #ffd700; }
+  }
+
+  /* ベット選択 */
+  .bet-section {
+    width: 100%;
+    max-width: 400px;
+    margin: 10px 0;
+  }
+  .bet-label {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 8px;
+  }
+  .bet-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .bet-btn {
+    background: #1a1a3a;
+    border: 2px solid #444;
+    color: #fff;
+    border-radius: 10px;
+    padding: 10px 0;
+    font-size: clamp(0.85rem, 3.5vw, 1rem);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bet-btn:active { transform: scale(0.93); }
+  .bet-btn.selected {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    border-color: #ffd700;
+    color: #000;
+    box-shadow: 0 0 12px #ffd70088;
+  }
+
+  /* スピンボタン */
+  .spin-btn {
+    width: 100%;
+    max-width: 400px;
+    margin: 12px 0 8px;
+    padding: 18px;
+    font-size: clamp(1.1rem, 5vw, 1.4rem);
+    font-weight: bold;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 15px #ff444488, 0 2px 0 #990000;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .spin-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 8px #ff444488; }
+  .spin-btn:disabled {
+    background: linear-gradient(135deg, #555, #333);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  /* 配当表 */
+  details {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 8px;
+  }
+  summary {
+    background: #1a1a3a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #aaa;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: " ▼"; font-size: 0.75em; }
+  details[open] summary::after { content: " ▲"; }
+
+  .paytable {
+    background: #111128;
+    border: 1px solid #333;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 12px;
+  }
+  .pay-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: clamp(0.8rem, 3.2vw, 0.95rem);
+  }
+  .pay-row:nth-child(odd) { background: #ffffff08; }
+  .pay-sym { font-size: 1.3em; }
+  .pay-name { flex: 1; margin: 0 8px; color: #ccc; }
+  .pay-val { color: #ffd700; font-weight: bold; }
+  .pay-note { font-size: 0.78rem; color: #888; text-align: center; margin-top: 8px; }
+
+  /* 履歴 */
+  .history {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 12px;
+  }
+  .history-title { font-size: 0.8rem; color: #666; text-align: center; margin-bottom: 6px; }
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    padding: 4px 10px;
+    background: #ffffff06;
+    border-radius: 6px;
+    color: #aaa;
+  }
+  .history-item .h-syms { letter-spacing: 2px; }
+  .history-item .h-result.win  { color: #4cff8f; }
+  .history-item .h-result.lose { color: #ff7070; }
+
+  /* ジャックポット演出 */
+  .jackpot-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000000cc;
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .jackpot-overlay.show { display: flex; }
+  .jackpot-text {
+    font-size: clamp(2rem, 10vw, 3.5rem);
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 30px #ffd700, 0 0 60px #ffa500;
+    animation: jackpot-anim 0.4s ease-in-out infinite alternate;
+  }
+  @keyframes jackpot-anim {
+    from { transform: scale(1) rotate(-2deg); }
+    to   { transform: scale(1.1) rotate(2deg); text-shadow: 0 0 60px #ffd700, 0 0 100px #ffa500; }
+  }
+  .jackpot-coins {
+    font-size: clamp(1.2rem, 5vw, 1.8rem);
+    color: #fff;
+    font-weight: bold;
+  }
+  .jackpot-btn {
+    margin-top: 8px;
+    padding: 14px 40px;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    background: #ffd700;
+    color: #000;
+    cursor: pointer;
+  }
+  .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 99; }
+</style>
+</head>
+<body>
+
+<h1>🎰 カジノ スロット 🎰</h1>
+
+<div class="status">
+  <div class="status-item">
+    <span class="status-label">💰 コイン</span>
+    <span class="status-value" id="coins">100</span>
+  </div>
+  <div class="status-item">
+    <span class="status-label">🎯 回転数</span>
+    <span class="status-value" id="spins">0</span>
+  </div>
+  <div class="status-item">
+    <span class="status-label">📈 収支</span>
+    <span class="status-value" id="net">+0</span>
+  </div>
+  <div class="status-item">
+    <span class="status-label">🏆 最高</span>
+    <span class="status-value" id="best">0</span>
+  </div>
+</div>
+
+<div class="machine">
+  <div class="reels">
+    <div class="reel-wrap" id="r0"><span class="reel-symbol" id="s0">🍒</span></div>
+    <div class="reel-wrap" id="r1"><span class="reel-symbol" id="s1">🍋</span></div>
+    <div class="reel-wrap" id="r2"><span class="reel-symbol" id="s2">🍊</span></div>
+  </div>
+  <div class="win-line" id="win-line"></div>
+  <div class="message neutral" id="message">ベットしてスピン！</div>
+</div>
+
+<div class="bet-section">
+  <div class="bet-label">ベット額を選択</div>
+  <div class="bet-buttons">
+    <button class="bet-btn selected" data-bet="5"  onclick="selectBet(5)">5</button>
+    <button class="bet-btn"          data-bet="10" onclick="selectBet(10)">10</button>
+    <button class="bet-btn"          data-bet="25" onclick="selectBet(25)">25</button>
+    <button class="bet-btn"          data-bet="50" onclick="selectBet(50)">50</button>
+  </div>
+</div>
+
+<button class="spin-btn" id="spin-btn" onclick="spin()">🎰 スピン！</button>
+
+<details>
+  <summary>📋 配当表</summary>
+  <div class="paytable" id="paytable"></div>
+</details>
+
+<div class="history">
+  <div class="history-title">直近の履歴</div>
+  <div class="history-list" id="history-list"></div>
+</div>
+
+<!-- ジャックポット演出 -->
+<div class="jackpot-overlay" id="jackpot-overlay">
+  <div class="jackpot-text">🎊 JACKPOT!! 🎊</div>
+  <div class="jackpot-coins" id="jackpot-coins"></div>
+  <button class="jackpot-btn" onclick="closeJackpot()">続ける</button>
+</div>
+<canvas class="confetti" id="confetti"></canvas>
+
+<script>
+const SYMBOLS = [
+  { sym: "🍒", name: "チェリー",  w: 30, v: 2   },
+  { sym: "🍋", name: "レモン",    w: 25, v: 3   },
+  { sym: "🍊", name: "オレンジ",  w: 20, v: 4   },
+  { sym: "🍇", name: "ブドウ",    w: 15, v: 5   },
+  { sym: "🔔", name: "ベル",      w: 8,  v: 10  },
+  { sym: "⭐", name: "スター",    w: 5,  v: 20  },
+  { sym: "💎", name: "ダイヤ",    w: 3,  v: 50  },
+  { sym: "7️⃣", name: "セブン",    w: 2,  v: 100 },
+];
+const TOTAL_W = SYMBOLS.reduce((a, s) => a + s.w, 0);
+
+let coins = 100, spins = 0, totalBet = 0, totalWon = 0, bestWin = 0;
+let bet = 5, spinning = false;
+let confettiAnim = null;
+
+function weightedRandom() {
+  let r = Math.random() * TOTAL_W, cumul = 0;
+  for (const s of SYMBOLS) { cumul += s.w; if (r < cumul) return s; }
+  return SYMBOLS[0];
+}
+
+function selectBet(b) {
+  bet = b;
+  document.querySelectorAll('.bet-btn').forEach(btn => {
+    btn.classList.toggle('selected', +btn.dataset.bet === b);
+  });
+}
+
+function updateStatus() {
+  const net = totalWon - totalBet;
+  document.getElementById('coins').textContent = coins;
+  document.getElementById('spins').textContent = spins;
+  const netEl = document.getElementById('net');
+  netEl.textContent = (net >= 0 ? '+' : '') + net;
+  netEl.className = 'status-value ' + (net >= 0 ? 'positive' : 'negative');
+  document.getElementById('best').textContent = bestWin;
+
+  const spinBtn = document.getElementById('spin-btn');
+  spinBtn.disabled = spinning || coins <= 0;
+}
+
+function spin() {
+  if (spinning || coins < 1) return;
+  const actualBet = Math.min(bet, coins);
+  coins -= actualBet;
+  totalBet += actualBet;
+  spins++;
+  spinning = true;
+  document.getElementById('spin-btn').disabled = true;
+  document.getElementById('win-line').classList.remove('active');
+  setMessage('🎰 スピン中...', 'neutral');
+  updateStatus();
+
+  // アニメーション開始
+  const reelWraps = [0, 1, 2].map(i => document.getElementById('r' + i));
+  const symsEl = [0, 1, 2].map(i => document.getElementById('s' + i));
+  reelWraps.forEach(r => r.classList.add('spinning'));
+
+  // 中身をランダムに切り替えながら回す
+  const spinInterval = setInterval(() => {
+    symsEl.forEach(el => el.textContent = weightedRandom().sym);
+  }, 80);
+
+  // 順番に止める（リールごとにディレイ）
+  const results = [weightedRandom(), weightedRandom(), weightedRandom()];
+  [400, 800, 1200].forEach((delay, i) => {
+    setTimeout(() => {
+      reelWraps[i].classList.remove('spinning');
+      symsEl[i].textContent = results[i].sym;
+    }, delay);
+  });
+
+  setTimeout(() => {
+    clearInterval(spinInterval);
+    reelWraps.forEach(r => r.classList.remove('spinning'));
+    results.forEach((r, i) => symsEl[i].textContent = r.sym);
+    resolveResult(results, actualBet);
+  }, 1300);
+}
+
+function resolveResult(results, actualBet) {
+  const [a, b, c] = results;
+  let prize = 0, msgText = '', msgClass = 'lose';
+
+  if (a.sym === b.sym && b.sym === c.sym) {
+    prize = actualBet * a.v;
+    if (a.v >= 50) {
+      msgText = `🎊 ${a.name} ３つ揃い！ ×${a.v} → +${prize}コイン`;
+      msgClass = 'big-win';
+    } else {
+      msgText = `✨ ${a.name} ３つ揃い！ ×${a.v} → +${prize}コイン`;
+      msgClass = 'win';
+    }
+    document.getElementById('win-line').classList.add('active');
+  } else if (a.sym === b.sym || b.sym === c.sym || a.sym === c.sym) {
+    const matchSym = (a.sym === b.sym) ? a : (b.sym === c.sym) ? b : a;
+    const mult = Math.max(1, Math.floor(matchSym.v / 4));
+    prize = actualBet * mult;
+    msgText = `🎯 ${matchSym.name} ２つ揃い！ ×${mult} → +${prize}コイン`;
+    msgClass = 'win';
+  } else {
+    msgText = `ハズレ… -${actualBet}コイン`;
+    msgClass = 'lose';
+  }
+
+  coins += prize;
+  totalWon += prize;
+  if (prize > bestWin) bestWin = prize;
+
+  setMessage(msgText, msgClass);
+  addHistory(results, prize, actualBet);
+  spinning = false;
+  updateStatus();
+
+  if (prize >= actualBet * 10) {
+    setTimeout(() => showJackpot(prize, a.sym === b.sym && b.sym === c.sym && a.v >= 50), 200);
+  }
+
+  if (coins <= 0) {
+    setTimeout(() => setMessage('💸 コインが尽きました！リセットしますか？', 'lose'), 600);
+  }
+}
+
+function setMessage(text, cls) {
+  const el = document.getElementById('message');
+  el.textContent = text;
+  el.className = 'message ' + cls;
+}
+
+function addHistory(results, prize, bet) {
+  const list = document.getElementById('history-list');
+  const item = document.createElement('div');
+  item.className = 'history-item';
+  const syms = results.map(r => r.sym).join(' ');
+  const isWin = prize > 0;
+  item.innerHTML = `
+    <span class="h-syms">${syms}</span>
+    <span class="h-result ${isWin ? 'win' : 'lose'}">${isWin ? '+' + prize : '-' + bet}</span>
+  `;
+  list.prepend(item);
+  // 最大10件
+  while (list.children.length > 10) list.removeChild(list.lastChild);
+}
+
+// ジャックポット演出
+function showJackpot(prize, isJackpot) {
+  const overlay = document.getElementById('jackpot-overlay');
+  document.getElementById('jackpot-coins').textContent =
+    isJackpot ? `💰 ${prize} コイン獲得！！` : `🎉 ${prize} コイン獲得！`;
+  overlay.querySelector('.jackpot-text').textContent =
+    isJackpot ? '🎊 JACKPOT!! 🎊' : '🎉 大当たり！！ 🎉';
+  overlay.classList.add('show');
+  startConfetti();
+}
+function closeJackpot() {
+  document.getElementById('jackpot-overlay').classList.remove('show');
+  stopConfetti();
+}
+
+// コンフェッティ
+function startConfetti() {
+  const canvas = document.getElementById('confetti');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const pieces = Array.from({length: 80}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    r: Math.random() * 6 + 4,
+    d: Math.random() * 80 + 20,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    tilt: Math.random() * 10 - 10,
+    tiltAngle: 0,
+    tiltSpeed: Math.random() * 0.1 + 0.05,
+  }));
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.tiltAngle += p.tiltSpeed;
+      p.y += (Math.cos(p.d) + 3 + p.r / 2) * 0.5;
+      p.x += Math.sin(p.tiltAngle) * 1.5;
+      p.tilt = Math.sin(p.tiltAngle) * 15;
+      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+      ctx.beginPath();
+      ctx.lineWidth = p.r / 2;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+      ctx.stroke();
+    });
+    confettiAnim = requestAnimationFrame(draw);
+  }
+  draw();
+}
+function stopConfetti() {
+  if (confettiAnim) { cancelAnimationFrame(confettiAnim); confettiAnim = null; }
+  const canvas = document.getElementById('confetti');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// 配当表の生成
+(function buildPaytable() {
+  const el = document.getElementById('paytable');
+  el.innerHTML = SYMBOLS.map(s => `
+    <div class="pay-row">
+      <span class="pay-sym">${s.sym}</span>
+      <span class="pay-name">${s.name}</span>
+      <span class="pay-val">×${s.v}</span>
+    </div>`).join('') +
+    '<div class="pay-note">２つ揃い: ３揃い倍率の 1/4</div>';
+})();
+
+updateStatus();
+</script>
+</body>
+</html>
